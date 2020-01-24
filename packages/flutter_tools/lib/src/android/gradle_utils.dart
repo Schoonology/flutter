@@ -748,7 +748,11 @@ void updateLocalProperties({
       buildInfo.buildNumber ?? project.manifest.buildNumber,
       globals.logger,
     );
-    changeIfNecessary('flutter.versionCode', buildNumber);
+    final String versionCode = calculateMonotonicVersionCode(
+      buildName,
+      buildNumber,
+    );
+    changeIfNecessary('flutter.versionCode', versionCode);
   }
 
   if (changed) {
@@ -972,3 +976,22 @@ List<JavaGradleCompat> _javaGradleCompatList = const <JavaGradleCompat>[
       agpMax: '4.2',
     ),
   ];
+
+/// Returns a numerical String based on [buildName] (higher priority) and
+/// [buildNumber] (lower priority) that is guaranteed to monotonically
+/// increase.
+String calculateMonotonicVersionCode(String? buildName, String? buildNumber) {
+  final List<String> nameDigits = buildName?.split('.') ?? <String>[];
+  final String number = buildNumber ?? '0';
+
+  if (number.length > 3 || nameDigits.any((String d) => d.length > 2)) {
+    throw ToolExit('Version must fit within 99.99.99+999.');
+  }
+
+  final List<String> paddedDigits = <String>[
+    ...nameDigits.map((String digit) => digit.padLeft(2, '0')),
+    number.padLeft(3, '0'),
+  ];
+
+  return paddedDigits.join().replaceFirst(RegExp(r'^0*'), '');
+}
